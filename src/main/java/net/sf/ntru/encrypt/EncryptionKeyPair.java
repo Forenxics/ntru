@@ -24,6 +24,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+
 package net.sf.ntru.encrypt;
 
 import java.io.ByteArrayInputStream;
@@ -33,162 +34,169 @@ import java.io.OutputStream;
 import java.util.Arrays;
 
 import net.sf.ntru.arith.IntEuclidean;
-import net.sf.ntru.encrypt.EncryptionParameters.TernaryPolynomialType;
+import net.sf.ntru.encrypt.EncryptionPrivateKey;
+import net.sf.ntru.encrypt.EncryptionPublicKey;
 import net.sf.ntru.polynomial.IntegerPolynomial;
 import net.sf.ntru.polynomial.ProductFormPolynomial;
 
-/** Contains a public and a private encryption key */
 public class EncryptionKeyPair {
-    EncryptionPrivateKey priv;
-    EncryptionPublicKey pub;
-    
-    /**
-     * Constructs a new key pair.
-     * @param priv a private key
-     * @param pub a public key
-     */
-    public EncryptionKeyPair(EncryptionPrivateKey priv, EncryptionPublicKey pub) {
-        this.priv = priv;
-        this.pub = pub;
-    }
-    
-    /**
-     * Constructs a new key pair from a byte array
-     * @param b an encoded key pair
-     */
-    public EncryptionKeyPair(byte[] b) {
-        ByteArrayInputStream is = new ByteArrayInputStream(b);
-        pub = new EncryptionPublicKey(is);
-        priv = new EncryptionPrivateKey(is);
-    }
-    
-    /**
-     * Constructs a new key pair from an input stream
-     * @param is an input stream
-     */
-    public EncryptionKeyPair(InputStream is) {
-        pub = new EncryptionPublicKey(is);
-        priv = new EncryptionPrivateKey(is);
-    }
-    
-    /**
-     * Returns the private key
-     * @return the private key
-     */
-    public EncryptionPrivateKey getPrivate() {
-        return priv;
-    }
-    
-    /**
-     * Returns the public key
-     * @return the public key
-     */
-    public EncryptionPublicKey getPublic() {
-        return pub;
+    private EncryptionPrivateKey privateKey;
+    private EncryptionPublicKey publicKey;
+
+    public EncryptionKeyPair(EncryptionPrivateKey privateKey, EncryptionPublicKey publicKey) {
+        this.privateKey = privateKey;
+        this.publicKey = publicKey;
     }
 
-    /**
-     * Tests if the key pair is valid.<br/>
-     * See IEEE 1363.1 section 9.2.4.1.
-     * @return <code>true</code> if the key pair is valid, <code>false</code> otherwise
-     */
+    public EncryptionKeyPair(byte[] encodedKeyPair) {
+        ByteArrayInputStream inputStream = new ByteArrayInputStream(encodedKeyPair);
+        publicKey = new EncryptionPublicKey(inputStream);
+        privateKey = new EncryptionPrivateKey(inputStream);
+    }
+
+    public EncryptionKeyPair(InputStream inputStream) {
+        publicKey = new EncryptionPublicKey(inputStream);
+        privateKey = new EncryptionPrivateKey(inputStream);
+    }
+
+    public EncryptionPrivateKey getPrivateKey() {
+        return privateKey;
+    }
+
+    public EncryptionPublicKey getPublicKey() {
+        return publicKey;
+    }
+
     public boolean isValid() {
-        int N = priv.N;
-        int q = priv.q;
-        TernaryPolynomialType polyType = priv.polyType;
-        
-        if (pub.N != N)
+        return validateKeyPair();
+    }
+
+    private boolean validateKeyPair() {
+        int n = privateKey.getN();
+        int q = privateKey.getQ();
+        TernaryPolynomialType polyType = privateKey.getPolyType();
+
+        if (!validatePublicKeys(n, q, polyType)) {
             return false;
-        if (pub.q != q)
-            return false;
-        
-        if (priv.t.toIntegerPolynomial().coeffs.length != N)
-            return false;
-        IntegerPolynomial h = pub.h.toIntegerPolynomial();
-        if (h.coeffs.length != N)
-            return false;
-        
-        if (!h.isReduced(q))
-            return false;
-        
-        IntegerPolynomial f = priv.t.toIntegerPolynomial();
-        if (polyType==TernaryPolynomialType.SIMPLE && !f.isTernary())
-            return false;
-        // if t is a ProductFormPolynomial, ternarity of f1,f2,f3 doesn't need to be verified
-        if (polyType==TernaryPolynomialType.PRODUCT && !(priv.t instanceof ProductFormPolynomial))
-            return false;
-        
-        if (polyType == TernaryPolynomialType.PRODUCT) {
-            f.mult(3);
-            f.coeffs[0] += 1;
-            f.modPositive(q);
         }
-        
-        // the key generator pre-multiplies h by 3, so divide by 9 instead of 3
-        int inv9 = IntEuclidean.calculate(9, q).x;   // 9^-1 mod q
-        
-        IntegerPolynomial g = f.mult(h, q);
-        g.mult(inv9);
-        g.modCenter(q);
-        if (!g.isTernary())
+
+        if (!validatePrivatePolynomial(n, polyType)) {
             return false;
-        int dg = N / 3;   // see EncryptionParameters.init()
-        if (g.count(1) != dg)
+        }
+
+        if (!validatePublicPolynomial(n, polyType)) {
             return false;
-        if (g.count(-1) != dg-1)
-            return false;
+        }
+
         return true;
     }
-    
-    /**
-     * Converts the key pair to a byte array
-     * @return the encoded key pair
-     */
+
+    private boolean validatePublicKeys(int n, int q, TernaryPolynomialType polyType) {
+        if (publicKey.getN()!= n) {
+            return false;
+        }
+
+        if (publicKey.getQ()!= q) {
+            return false;
+        }
+
+        return true;
+    }
+
+    private boolean validatePrivatePolynomial(int n, TernaryPolynomialType polyType) {
+        if (polyType == TernaryPolynomialType.SIMPLE) {
+            return privateKey.getT().isTernary();
+        } else if (polyType == TernaryPolynomialType.PRODUCT) {
+            return privateKey.getT() instanceof ProductFormPolynomial;
+        }
+
+        return false;
+    }
+
+    private boolean validatePublicPolynomial(int n, TernaryPolynomialType polyType) {
+        IntegerPolynomial h = publicKey.getH().toIntegerPolynomial();
+
+        if (h.coeffs.length!= n) {
+            return false;
+        }
+
+        if (!h.isReduced(publicKey.getQ())) {
+            return false;
+        }
+
+        if (polyType == TernaryPolynomialType.PRODUCT) {
+            IntegerPolynomial f = privateKey.getT().toIntegerPolynomial();
+            f.mult(3);
+            f.coeffs[0] += 1;
+            f.modPositive(publicKey.getQ());
+
+            IntegerPolynomial g = f.mult(h, publicKey.getQ());
+            int inv9 = IntEuclidean.calculate(9, publicKey.getQ()).x;
+            g.mult(inv9);
+            g.modCenter(publicKey.getQ());
+
+            return g.isTernary() && g.count(1) == n / 3 && g.count(-1) == n / 3 - 1;
+        }
+
+        return true;
+    }
+
     public byte[] getEncoded() {
-        byte[] pubArr = pub.getEncoded();
-        byte[] privArr = priv.getEncoded();
-        byte[] kpArr = Arrays.copyOf(pubArr, pubArr.length+privArr.length);
-        System.arraycopy(privArr, 0, kpArr, pubArr.length, privArr.length);
-        return kpArr;
+        if (publicKey == null || privateKey == null) {
+            return new byte[0];
+        }
+
+        byte[] publicKeyBytes = publicKey.getEncoded();
+        byte[] privateKeyBytes = privateKey.getEncoded();
+
+        byte[] encodedKeyPair = new byte[publicKeyBytes.length + privateKeyBytes.length];
+        System.arraycopy(publicKeyBytes, 0, encodedKeyPair, 0, publicKeyBytes.length);
+        System.arraycopy(privateKeyBytes, 0, encodedKeyPair, publicKeyBytes.length, privateKeyBytes.length);
+
+        return encodedKeyPair;
     }
-    
-    /**
-     * Writes the key pair to an output stream
-     * @param os an output stream
-     * @throws IOException
-     */
-    public void writeTo(OutputStream os) throws IOException {
-        os.write(getEncoded());
+
+    public void writeTo(OutputStream outputStream) throws IOException {
+        outputStream.write(getEncoded());
     }
-    
+
     @Override
     public int hashCode() {
         final int prime = 31;
         int result = 1;
-        result = prime * result + ((priv == null) ? 0 : priv.hashCode());
-        result = prime * result + ((pub == null) ? 0 : pub.hashCode());
+        result = prime * result + ((privateKey == null)? 0 : privateKey.hashCode());
+        result = prime * result + ((publicKey == null)? 0 : publicKey.hashCode());
         return result;
     }
 
     @Override
     public boolean equals(Object obj) {
-        if (this == obj)
+        if (this == obj) {
             return true;
-        if (obj == null)
+        }
+
+        if (obj == null || getClass()!= obj.getClass()) {
             return false;
-        if (getClass() != obj.getClass())
-            return false;
+        }
+
         EncryptionKeyPair other = (EncryptionKeyPair) obj;
-        if (priv == null) {
-            if (other.priv != null)
+
+        if (privateKey == null) {
+            if (other.privateKey!= null) {
                 return false;
-        } else if (!priv.equals(other.priv))
+            }
+        } else if (!privateKey.equals(other.privateKey)) {
             return false;
-        if (pub == null) {
-            if (other.pub != null)
+        }
+
+        if (publicKey == null) {
+            if (other.publicKey!= null) {
                 return false;
-        } else if (!pub.equals(other.pub))
+            }
+        } else if (!publicKey.equals(other.publicKey)) {
             return false;
+        }
+
         return true;
     }
 }
