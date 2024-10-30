@@ -185,23 +185,20 @@ class Basis {
 
     @Override
     public int hashCode() {
-        final int prime = 31;
-        int result = 1;
-        result = prime * result + N;
-        result = prime * result
-                + ((basisType == null) ? 0 : basisType.hashCode());
-        result = prime * result + ((f == null) ? 0 : f.hashCode());
-        result = prime * result
-                + ((fPrime == null) ? 0 : fPrime.hashCode());
-        result = prime * result + ((h == null) ? 0 : h.hashCode());
-        long temp;
-        temp = Double.doubleToLongBits(keyNormBoundSq);
-        result = prime * result + (int) (temp ^ (temp >>> 32));
-        result = prime * result
-                + ((polyType == null) ? 0 : polyType.hashCode());
-        result = prime * result + q;
-        return result;
-    }
+    final int prime = 31;
+    int result = 1;
+    result = prime * result + N;
+    result = prime * result + (basisType == null ? 0 : basisType.hashCode());
+    result = prime * result + (f == null ? 0 : f.hashCode());
+    result = prime * result + (fPrime == null ? 0 : fPrime.hashCode());
+    result = prime * result + (h == null ? 0 : h.hashCode());
+    long temp;
+    temp = Double.doubleToLongBits(keyNormBoundSq);
+    result = prime * result + (int) (temp ^ (temp >>> 32));
+    result = prime * result + (polyType == null ? 0 : polyType.hashCode());
+    result = prime * result + q;
+    return result;
+}
 
     @Override
    
