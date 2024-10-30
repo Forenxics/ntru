@@ -204,40 +204,18 @@ class Basis {
     }
 
     @Override
-    public boolean equals(Object obj) {
-        if (this == obj)
-            return true;
-        if (obj == null)
-            return false;
-        if (!(obj instanceof Basis))
-            return false;
-        Basis other = (Basis) obj;
-        if (N != other.N)
-            return false;
-        if (basisType != other.basisType)
-            return false;
-        if (f == null) {
-            if (other.f != null)
-                return false;
-        } else if (!f.equals(other.f))
-            return false;
-        if (fPrime == null) {
-            if (other.fPrime != null)
-                return false;
-        } else if (!fPrime.equals(other.fPrime))
-            return false;
-        if (h == null) {
-            if (other.h != null)
-                return false;
-        } else if (!h.equals(other.h))
-            return false;
-        if (Double.doubleToLongBits(keyNormBoundSq) != Double
-                .doubleToLongBits(other.keyNormBoundSq))
-            return false;
-        if (polyType != other.polyType)
-            return false;
-        if (q != other.q)
-            return false;
-        return true;
-    }
+   
+public boolean equals(Object obj) {
+    if (this == obj) return true;
+    if (!(obj instanceof Basis)) return false;
+    Basis other = (Basis) obj;
+    return N == other.N
+        && basisType == other.basisType
+        && (f == null ? other.f == null : f.equals(other.f))
+        && (fPrime == null ? other.fPrime == null : fPrime.equals(other.fPrime))
+        && (h == null ? other.h == null : h.equals(other.h))
+        && Double.doubleToLongBits(keyNormBoundSq) == Double.doubleToLongBits(other.keyNormBoundSq)
+        && polyType == other.polyType
+        && q == other.q;
+}
 }
